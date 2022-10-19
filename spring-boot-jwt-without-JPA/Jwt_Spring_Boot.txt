@@ -266,3 +266,135 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
 		httpSecurity.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
 	}
 }
+
+
+//Working with DataBase in spring security
+<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-jpa</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>mysql</groupId>
+			<artifactId>mysql-connector-java</artifactId>
+		</dependency>
+
+		add this dependency in pom.xml file
+
+//add the data source in application.properties file
+jwt.secret=javainuse
+spring.datasource.url=jdbc:mysql://localhost/bootdb?createDatabaseIfNotExist=true&autoReconnect=true&useSSL=false
+spring.datasource.username=root
+spring.datasource.password=root
+spring.datasource.driverClassName=com.mysql.jdbc.Driver
+spring.datasource.platform=mysql
+spring.jpa.hibernate.ddl-auto=create-drop
+
+//Add entity class for user
+@Entity
+@Table(name = "user")
+public class DAOUser {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column
+    private String username;
+    @Column
+    @JsonIgnore
+    private String password;
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+}
+
+//Define the Dto class
+public class UserDTO {
+    private String username;
+    private String password;
+
+    public String getUsername() {
+        return username;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+}
+
+//define url in config class
+.authorizeRequests().antMatchers("/authenticate", "/register").permitAll().
+
+//In user details service 
+//In the JwtUserDetailsService, autowire the UserDao bean and the BcryptEncoder bean. Also define the saveUser function for inserting user details-
+//till now we are able to create a new user in database
+@Autowired
+	private UserDao userDao;
+
+	@Autowired
+	private PasswordEncoder bcryptEncoder;
+
+	public DAOUser save(UserDTO user) {
+		DAOUser newUser = new DAOUser();
+		newUser.setUsername(user.getUsername());
+		newUser.setPassword(bcryptEncoder.encode(user.getPassword()));
+		return userDao.save(newUser);
+	}
+
+	//Finally modify the Controller class for adding a POST request for adding user details to database.
+
+	 @RequestMapping(value ="/register",method = RequestMethod.POST)
+    public ResponseEntity<?> saveUser(@RequestBody UserDTO userDTO){
+        return ResponseEntity.ok(jwtInMemoryUserDetailsService.saveuser(userDTO));
+    }
+
+
+In the UserDao interface add a method findByUsername(String username)
+@Repository
+public interface UserDao extends CrudRepository<DAOUser, Integer> {
+	UserDao findByUsername(String username);
+}
+
+n the loadUserByUsername method, we fetch the user records from the database instead of using hardcoded value.
+
+Override
+	public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+  DAOUser user = userDao.findByUsername(username);
+        if(user==null){
+            throw new UsernameNotFoundException("User is not avialble with this username :"+username);
+        }
+        else {
+           return new org.springframework.security.core.userdetails.User(user.getUsername(),user.getPassword(),
+                   new ArrayList<>());
+        }
+	}
