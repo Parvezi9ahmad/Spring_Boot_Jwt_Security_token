@@ -2,7 +2,10 @@ package com.javainuse.controller;
 
 import java.util.Objects;
 
+import com.javainuse.model.UserDTO;
+import com.javainuse.service.JwtUserDetailsService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -29,7 +32,7 @@ public class JwtAuthenticationController {
     private JwtTokenUtil jwtTokenUtil;
 
     @Autowired
-    private UserDetailsService jwtInMemoryUserDetailsService;
+    private JwtUserDetailsService jwtInMemoryUserDetailsService;
 
     @RequestMapping(value = "/authenticate", method = RequestMethod.POST)
     public ResponseEntity<?> createAuthenticationToken(@RequestBody JwtRequest jwtRequest) throws Exception {
@@ -39,6 +42,10 @@ public class JwtAuthenticationController {
         return ResponseEntity.ok(new JwtResponse(token));
     }
 
+    @RequestMapping(value ="/register",method = RequestMethod.POST)
+    public ResponseEntity<?> saveUser(@RequestBody UserDTO userDTO){
+        return ResponseEntity.ok(jwtInMemoryUserDetailsService.saveuser(userDTO));
+    }
     private void authenticate(String username, String password) throws Exception {
         Objects.requireNonNull(username);
         Objects.requireNonNull(password);
