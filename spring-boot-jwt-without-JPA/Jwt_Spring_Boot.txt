@@ -398,3 +398,165 @@ Override
                    new ArrayList<>());
         }
 	}
+	
+	//Consuming this service we are creating new service
+//create model classes like below
+
+public class User {
+    private String username;
+    private String password;
+
+    public String getUsername() {
+        return username;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+}
+
+//
+public class RegistrationUser extends User{
+    private String role;
+
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
+    }
+}
+//
+public class ResponseToken {
+    private String token;
+
+    public String getToken() {
+        return token;
+    }
+
+    public void setToken(String token) {
+        this.token = token;
+    }
+}
+
+
+//declare rest template in main application
+@Bean
+    public RestTemplate getTemplate() {
+        return new RestTemplate();
+    }
+
+  //controller that coosuming other service 3 times and perform operation
+
+  @RestController
+public class TestController {
+
+    @Autowired
+    private RestTemplate restTemplate;
+
+    private static final String REGISTRATION_URL="http://localhost:8080/register";
+    private static final String AUTHENTICATION_URL="http://localhost:8080/authenticate";
+    private static final String HELLO_URL="http://localhost:8080/hello";
+
+    @RequestMapping(value="/getResponse",method = RequestMethod.GET)
+    public String getResponse() throws JsonProcessingException {
+        String response=null;
+        //create registration user
+        RegistrationUser registrationUser = getRegistrationUser();
+        System.out.println(registrationUser.getUsername());
+
+       //convert object to json
+         String registrationBody = getBody(registrationUser);
+        System.out.println(registrationBody);
+
+        //create the headers specifying that it is a json request
+       HttpHeaders registrationHeaders = getHeaders();
+        System.out.println(registrationHeaders);
+
+        //Represents an HTTP request or response entity, consisting of headers and body.
+        //it contains json or some other data type and headers
+        HttpEntity<String> registrationEntity = new HttpEntity<String>(registrationBody, registrationHeaders);
+        System.out.println(registrationEntity+" registrationEntity");
+        try{
+
+            ResponseEntity<String> registrationResponse = restTemplate.exchange(REGISTRATION_URL, HttpMethod.POST,
+                    registrationEntity, String.class);
+            // if the registration is successful
+            System.out.println("registrationResponse :"+registrationResponse);
+
+            System.out.println(registrationResponse.getBody());
+            if(registrationResponse.getStatusCode().equals(HttpStatus.OK)){
+               //create user
+                 User authenticationUser = getAuthenticationUser();
+
+                 //convert user object to json
+                 String authenticationBody = getBody(authenticationUser);
+
+                 //get headers
+                 HttpHeaders authenticationheaders = getHeaders();
+
+                //Represents an HTTP request or response entity, consisting of headers and body.
+                //it contains json or some other data type and headers
+                 HttpEntity<String> authenticateHttpEntity = new HttpEntity<>(authenticationBody, authenticationheaders);
+
+                 ResponseEntity<ResponseToken> authenticationResponse = restTemplate.exchange(AUTHENTICATION_URL, HttpMethod.POST, authenticateHttpEntity, ResponseToken.class);
+                System.out.println("authenticationResponse :"+authenticationResponse);
+
+                if(authenticationResponse.getStatusCode().equals(HttpStatus.OK)){
+                     String token ="Bearer "+authenticationResponse.getBody().getToken();
+                     HttpHeaders headers = getHeaders();
+                     headers.set("Authorization",token);
+                     HttpEntity<String> jwtEntity = new HttpEntity<String>(headers);
+                     ResponseEntity<String> helloResponse = restTemplate.exchange(HELLO_URL, HttpMethod.GET, jwtEntity, String.class);
+                     if(helloResponse.getStatusCode().equals(HttpStatus.OK)){
+                         System.out.println("Success");
+                          response = helloResponse.getBody();
+                     }
+                }
+            }
+
+        }
+        catch(Exception e){
+            System.out.println("Exception");
+        }
+
+
+        return response;
+    }
+
+    private RegistrationUser getRegistrationUser() {
+        RegistrationUser user = new RegistrationUser();
+        user.setUsername("javainuse");
+        user.setPassword("javainuse");
+        user.setRole("ROLE_ADMIN");
+        return user;
+    }
+
+    private String getBody(final User user) throws JsonProcessingException {
+        return new ObjectMapper().writeValueAsString(user);
+    }
+    private HttpHeaders getHeaders() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Content-Type", MediaType.APPLICATION_JSON_VALUE);
+        headers.set("Accept", MediaType.APPLICATION_JSON_VALUE);
+        return headers;
+    }
+
+    private User getAuthenticationUser(){
+        User user=new User();
+        user.setUsername("javainuse");
+        user.setPassword("javainuse");
+        return user;
+    }
+
+}
+
